@@ -1,0 +1,33 @@
+name: build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      USER_NAME: ${{ secrets.USER_NAME }}
+      PKG_NAME: docker.pkg.github.com/${{ secrets.USER_NAME }}/microsocks-alpine/microsocks-alpine
+
+    steps:
+      - uses: actions/checkout@v2.3.4
+
+      - name: Get the version
+        run: echo "PKG_VERSION=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
+
+      - name: Build docker image
+        run: docker build -t $PKG_NAME:$PKG_VERSION .
+
+      - name: Docker login
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo $GITHUB_TOKEN | docker login -u $USER_NAME --password-stdin docker.pkg.github.com
+
+      - name: Push docker image
+        run: docker push $PKG_NAME:$PKG_VERSION
+
+      - name: Docker logout
+        run: docker logout docker.pkg.github.com
